@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THRIFTFIT — Curated Vintage & Fit-Matcher</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --charcoal:#18181B;
+    --offwhite:#FAFAFA;
+    --border-zinc:#E4E4E7;
+    --sage:#52796F;
+    --amber:#D97706;
+  }
+  body{ font-family:'Inter',sans-serif; background:var(--offwhite); color:var(--charcoal); }
+  .font-display{ font-family:'Plus Jakarta Sans',sans-serif; }
+  .font-mono{ font-family:'JetBrains Mono',monospace; }
+  .page{ display:none; }
+  .page.active{ display:block; }
+  .accordion-body{ max-height:0; overflow:hidden; transition:max-height .35s ease; }
+  .accordion-body.open{ max-height:400px; }
+  .card-hover{ transition:transform .25s ease, border-color .25s ease; }
+  .card-hover:hover{ transform:scale(1.015); border-color:var(--charcoal); }
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border-zinc); border-radius:8px; }
+  input[type=range]{ accent-color:var(--charcoal); }
+  .meter-fill{ transition:width .3s ease; }
+  .tab-active{ background:var(--charcoal); color:#fff; }
+  .nav-link.active{ color:var(--charcoal); font-weight:600; }
+</style>
+</head>
+<body class="antialiased selection:bg-zinc-900 selection:text-white">
+
+<!-- ============ NAVBAR ============ -->
+<header class="border-b border-zinc-200 bg-white/80 backdrop-blur-md fixed top-0 w-full z-50">
+  <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+    <a href="#" data-nav="home" class="nav-btn text-xl font-display font-extrabold tracking-tighter text-zinc-900 uppercase">
+      THRIFT<span class="text-zinc-400">FIT.</span>
+    </a>
+    <nav class="hidden md:flex space-x-8 text-sm font-medium text-zinc-600">
+      <a href="#" data-nav="katalog" class="nav-btn nav-link hover:text-zinc-900 transition">Katalog 1-of-1</a>
+      <a href="#" data-nav="home" data-scroll="sesuaikan" class="nav-btn nav-link hover:text-zinc-900 transition">Fitur Sesuaikan</a>
+      <a href="#" data-nav="dashboard" class="nav-btn nav-link hover:text-zinc-900 transition">Dashboard</a>
+    </nav>
+    <div class="hidden md:flex items-center space-x-4">
+      <span id="holdIndicator" class="hidden text-xs font-mono font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5"></span>
+      <span class="authSlot"></span>
+      <a href="#" data-nav="home" data-scroll="sesuaikan" class="nav-btn bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold px-4 py-2.5 rounded-full transition">
+        Atur Ukuranmu
+      </a>
+    </div>
+    <!-- Mobile hamburger -->
+    <button id="mobileMenuBtn" class="md:hidden p-2 -mr-2 text-zinc-700" aria-label="Buka menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- Mobile menu panel -->
+  <div id="mobileMenu" class="hidden md:hidden border-t border-zinc-200 bg-white">
+    <div class="px-6 py-4 space-y-1">
+      <a href="#" data-nav="katalog" class="nav-btn block text-sm font-medium text-zinc-700 py-2.5">Katalog 1-of-1</a>
+      <a href="#" data-nav="home" data-scroll="sesuaikan" class="nav-btn block text-sm font-medium text-zinc-700 py-2.5">Fitur Sesuaikan</a>
+      <a href="#" data-nav="dashboard" class="nav-btn block text-sm font-medium text-zinc-700 py-2.5">Dashboard</a>
+      <div class="flex items-center justify-between pt-3 mt-2 border-t border-zinc-100">
+        <span class="authSlot text-sm"></span>
+        <a href="#" data-nav="home" data-scroll="sesuaikan" class="nav-btn bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold px-4 py-2.5 rounded-full transition">
+          Atur Ukuranmu
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ LOGIN MODAL ============ -->
+<div id="loginModal" class="hidden fixed inset-0 z-[60] bg-zinc-900/40 flex items-center justify-center px-6">
+  <div class="bg-white rounded-2xl p-6 max-w-sm w-full">
+    <div class="flex items-center justify-between mb-1">
+      <h3 class="font-display font-bold text-lg">Masuk ke ThriftFit</h3>
+      <button onclick="closeLoginModal()" class="text-zinc-400 hover:text-zinc-900 text-xl leading-none">&times;</button>
+    </div>
+    <p id="loginModeHint" class="text-xs text-zinc-400 mb-4"></p>
+    <div class="space-y-3">
+      <input id="loginName" type="text" placeholder="Nama kamu" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+      <input id="loginEmail" type="email" placeholder="Email" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+      <input id="loginPassword" type="password" placeholder="Password" class="hidden w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+    </div>
+    <p id="loginError" class="hidden text-xs text-red-500 mt-2"></p>
+    <button id="loginSubmit" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-2.5 rounded-full text-sm mt-4">Masuk</button>
+    <p id="authToggleModeText" class="hidden text-xs text-center text-zinc-500 mt-3">Belum punya akun? <button onclick="toggleAuthMode()" class="font-semibold underline">Daftar</button></p>
+  </div>
+</div>
+
+<main class="pt-16">
+
+<!-- ============ PAGE: HOME ============ -->
+<section id="page-home" class="page active">
+  <!-- Hero with background photo (assets/background.png) + dark overlay for text contrast -->
+  <div class="relative overflow-hidden">
+    <img src="assets/background.png" class="absolute inset-0 w-full h-full object-cover object-center" alt="" loading="eager">
+    <div class="absolute inset-0 bg-zinc-900/70"></div>
+    <div class="relative z-10 pt-28 md:pt-36 pb-40 md:pb-48 px-6 max-w-5xl mx-auto text-center">
+      <span class="inline-block bg-white/10 text-white text-xs font-semibold px-3 py-1 rounded-full mb-6 border border-white/25 uppercase tracking-wider backdrop-blur-sm">
+        Sustainable Fashion • Curated 1-of-1 Items
+      </span>
+      <h1 class="text-4xl md:text-6xl font-display font-extrabold text-white tracking-tight leading-tight mb-6">
+        Temukan Pakaian Vintage Unik dengan <span class="underline decoration-white/40 underline-offset-8">Ukuran Presisi</span>
+      </h1>
+      <p class="text-base md:text-lg text-zinc-200 leading-relaxed max-w-2xl mx-auto">
+        Gunakan fitur <strong class="text-white">"Sesuaikan Ukuran"</strong> untuk mencocokkan Lebar Dada dan Panjang Baju secara spesifik. Tidak ada lagi keraguan salah ukuran saat belanja thrift online.
+      </p>
+    </div>
+  </div>
+
+  <!-- Quick-Fit Matcher Bar — floats up over the photo's bottom edge -->
+  <div class="px-6 pb-4 max-w-5xl mx-auto text-center -mt-28 md:-mt-32 relative z-10">
+    <div id="sesuaikan" class="bg-white p-5 rounded-2xl shadow-lg border border-zinc-200 max-w-3xl mx-auto mb-4 text-left">
+      <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Fitur Sesuaikan Ukuran (Quick-Match):</div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-zinc-700 mb-1">Lebar Dada (cm)</label>
+          <input id="qfChest" type="number" placeholder="Contoh: 55" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-900">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-zinc-700 mb-1">Panjang Baju (cm)</label>
+          <input id="qfLength" type="number" placeholder="Contoh: 70" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-zinc-900">
+        </div>
+        <div class="flex items-end">
+          <button id="qfSubmit" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-2.5 px-4 rounded-lg text-sm transition">
+            Cari Baju Pas &rarr;
+          </button>
+        </div>
+      </div>
+      <p id="qfHint" class="text-xs text-zinc-400 mt-3">Isi ukuran badan/baju favoritmu — kami urutkan katalog dari yang paling pas.</p>
+    </div>
+  </div>
+
+  <!-- Eco Impact Badge -->
+  <div class="max-w-5xl mx-auto px-6 mb-16">
+    <div class="bg-[var(--sage)] rounded-2xl px-8 py-6 grid grid-cols-1 sm:grid-cols-3 gap-6 text-white">
+      <div class="text-center sm:text-left">
+        <div class="font-mono text-2xl font-bold">2,340 kg</div>
+        <div class="text-xs uppercase tracking-wider opacity-80 mt-1">CO2 Terhindar</div>
+      </div>
+      <div class="text-center sm:text-left">
+        <div class="font-mono text-2xl font-bold">18,900 L</div>
+        <div class="text-xs uppercase tracking-wider opacity-80 mt-1">Air Terhemat</div>
+      </div>
+      <div class="text-center sm:text-left">
+        <div class="font-mono text-2xl font-bold">1,204</div>
+        <div class="text-xs uppercase tracking-wider opacity-80 mt-1">Item Diselamatkan dari TPA</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid Produk Drop Terbaru -->
+  <div class="max-w-6xl mx-auto px-6 mb-20">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="font-display font-bold text-2xl text-zinc-900">Drop Terbaru</h2>
+      <a href="#" data-nav="katalog" class="nav-btn text-sm font-semibold text-zinc-700 hover:text-zinc-900">Lihat Semua Katalog &rarr;</a>
+    </div>
+    <div id="homeGrid" class="grid grid-cols-2 md:grid-cols-4 gap-5"></div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-zinc-200 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+      <div>
+        <div class="font-display font-extrabold uppercase tracking-tighter mb-3">THRIFT<span class="text-zinc-400">FIT.</span></div>
+        <p class="text-sm text-zinc-500 leading-relaxed">Curated vintage, satu per satu, cocok di badanmu.</p>
+      </div>
+      <div>
+        <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Belanja</div>
+        <ul class="text-sm text-zinc-600 space-y-2">
+          <li><a href="#" data-nav="katalog" class="nav-btn hover:text-zinc-900">Katalog 1-of-1</a></li>
+          <li><a href="#" data-nav="home" data-scroll="sesuaikan" class="nav-btn hover:text-zinc-900">Fitur Sesuaikan</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Bantuan</div>
+        <ul class="text-sm text-zinc-600 space-y-2">
+          <li>Standar Grade Kondisi</li>
+          <li>Panduan Ukuran</li>
+          <li>Kebijakan Retur</li>
+        </ul>
+      </div>
+      <div>
+        <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Ikuti Kami</div>
+        <ul class="text-sm text-zinc-600 space-y-2">
+          <li>Instagram</li>
+          <li>TikTok</li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-zinc-200 text-center text-xs text-zinc-400 py-4">© 2026 THRIFTFIT. Prototipe demo.</div>
+  </footer>
+</section>
+
+<!-- ============ PAGE: KATALOG ============ -->
+<section id="page-katalog" class="page">
+  <div class="max-w-7xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-8">
+    <!-- Filter Sidebar -->
+    <aside class="bg-white border border-zinc-200 rounded-2xl p-5 h-fit">
+      <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-4">Filter Presisi</div>
+
+      <div class="mb-5">
+        <label class="text-xs font-semibold text-zinc-700">Lebar Dada (cm)</label>
+        <div class="flex items-center gap-2 mt-2">
+          <input id="fChestMin" type="number" placeholder="Min" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1.5 text-sm font-mono">
+          <span class="text-zinc-400">–</span>
+          <input id="fChestMax" type="number" placeholder="Max" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1.5 text-sm font-mono">
+        </div>
+      </div>
+
+      <div class="mb-5">
+        <label class="text-xs font-semibold text-zinc-700">Panjang Baju (cm)</label>
+        <div class="flex items-center gap-2 mt-2">
+          <input id="fLengthMin" type="number" placeholder="Min" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1.5 text-sm font-mono">
+          <span class="text-zinc-400">–</span>
+          <input id="fLengthMax" type="number" placeholder="Max" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-2 py-1.5 text-sm font-mono">
+        </div>
+      </div>
+
+      <div class="mb-5">
+        <label class="text-xs font-semibold text-zinc-700 block mb-2">Grade Kondisi</label>
+        <div id="gradeFilters" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <button id="clearFilters" class="w-full text-xs font-semibold text-zinc-500 hover:text-zinc-900 border border-zinc-200 rounded-lg py-2 mt-2">Reset Filter</button>
+    </aside>
+
+    <!-- Product Grid -->
+    <div>
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h2 class="font-display font-bold text-xl text-zinc-900">Katalog 1-of-1</h2>
+          <p id="fitBannerText" class="text-xs text-zinc-500 mt-1"></p>
+        </div>
+        <div class="flex items-center border border-zinc-200 rounded-full p-1">
+          <button data-view="grid" class="viewBtn tab-active text-xs font-semibold px-3 py-1.5 rounded-full transition">Compact</button>
+          <button data-view="large" class="viewBtn text-xs font-semibold px-3 py-1.5 rounded-full transition">Large</button>
+        </div>
+      </div>
+      <div id="katalogGrid" class="grid grid-cols-2 md:grid-cols-3 gap-5"></div>
+      <p id="emptyState" class="hidden text-center text-sm text-zinc-400 py-16">Tidak ada item yang cocok dengan filter ini.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE: PDP ============ -->
+<section id="page-pdp" class="page">
+  <div id="pdpContent" class="max-w-6xl mx-auto px-6 py-10"></div>
+</section>
+
+<!-- ============ PAGE: DASHBOARD ============ -->
+<section id="page-dashboard" class="page">
+  <div class="max-w-6xl mx-auto px-6 pt-10">
+    <div id="dashboardLoginBanner" class="hidden bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-xl p-3 mb-6">
+      Kamu belum masuk. <button onclick="openLoginModal()" class="font-semibold underline">Masuk sekarang</button> untuk menyimpan Fit Profile dan melihat riwayat transaksimu.
+    </div>
+  </div>
+  <div class="max-w-6xl mx-auto px-6 pb-10 grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-8">
+    <aside class="bg-white border border-zinc-200 rounded-2xl p-4 h-fit">
+      <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3 px-2">Akun Saya</div>
+      <button data-dashtab="profile" class="dashTabBtn tab-active w-full text-left text-sm font-medium px-3 py-2.5 rounded-lg mb-1">Fit Profile Saver</button>
+      <button data-dashtab="addresses" class="dashTabBtn w-full text-left text-sm font-medium px-3 py-2.5 rounded-lg mb-1 text-zinc-600">Alamat Tersimpan</button>
+      <button data-dashtab="orders" class="dashTabBtn w-full text-left text-sm font-medium px-3 py-2.5 rounded-lg mb-1 text-zinc-600">Riwayat Transaksi</button>
+      <button data-dashtab="shipping" class="dashTabBtn w-full text-left text-sm font-medium px-3 py-2.5 rounded-lg text-zinc-600">Status Pengiriman</button>
+    </aside>
+
+    <div>
+      <!-- Fit Profile Saver -->
+      <div id="dashtab-profile" class="dashtab">
+        <h2 class="font-display font-bold text-xl mb-1">Fit Profile Saver</h2>
+        <p class="text-sm text-zinc-500 mb-6">Simpan ukuran PxL favoritmu supaya tidak perlu mengukur ulang setiap kali belanja.</p>
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Nama Profil</label>
+              <input id="dpName" type="text" placeholder="cth: Oversized Fav" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Lebar Dada (cm)</label>
+              <input id="dpChest" type="number" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Panjang (cm)</label>
+              <input id="dpLength" type="number" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Preferensi</label>
+              <select id="dpPref" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+                <option>Slim</option><option selected>Regular</option><option>Boxy</option>
+              </select>
+            </div>
+          </div>
+          <button id="dpSave" class="mt-4 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm px-5 py-2.5 rounded-full transition">Simpan Profil</button>
+        </div>
+        <div id="dpList" class="space-y-3"></div>
+      </div>
+
+      <!-- Addresses -->
+      <div id="dashtab-addresses" class="dashtab hidden">
+        <h2 class="font-display font-bold text-xl mb-1">Alamat Tersimpan</h2>
+        <p class="text-sm text-zinc-500 mb-6">Simpan alamat pengiriman supaya checkout lebih cepat lain kali.</p>
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5 mb-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input id="addrLabel" type="text" placeholder="Label (cth: Rumah, Kantor)" class="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+            <input id="addrName" type="text" placeholder="Nama Penerima" class="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+            <input id="addrPhone" type="text" placeholder="No. HP" class="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+            <input id="addrFull" type="text" placeholder="Alamat Lengkap" class="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+          </div>
+          <label class="flex items-center gap-2 text-xs text-zinc-600 mt-3">
+            <input id="addrDefault" type="checkbox"> Jadikan alamat utama
+          </label>
+          <button id="addrSave" class="mt-4 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm px-5 py-2.5 rounded-full transition">Simpan Alamat</button>
+        </div>
+        <div id="addrList" class="space-y-3"></div>
+      </div>
+
+      <!-- Orders -->
+      <div id="dashtab-orders" class="dashtab hidden">
+        <h2 class="font-display font-bold text-xl mb-1">Riwayat Transaksi</h2>
+        <p class="text-sm text-zinc-500 mb-6">Item 1-of-1 yang sudah kamu amankan.</p>
+        <div class="bg-white border border-zinc-200 rounded-2xl divide-y divide-zinc-100">
+          <div class="flex items-center justify-between p-4">
+            <div>
+              <div class="text-sm font-semibold">Vintage Nike Crewneck 90s</div>
+              <div class="text-xs text-zinc-400 font-mono">L:56 P:71 · Grade A</div>
+            </div>
+            <span class="text-xs font-semibold bg-zinc-100 rounded-full px-3 py-1">Selesai</span>
+          </div>
+          <div class="flex items-center justify-between p-4">
+            <div>
+              <div class="text-sm font-semibold">Levi's 501 Denim Jacket</div>
+              <div class="text-xs text-zinc-400 font-mono">L:52 P:65 · Grade B</div>
+            </div>
+            <span class="text-xs font-semibold bg-amber-50 text-amber-700 rounded-full px-3 py-1">Dikirim</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shipping -->
+      <div id="dashtab-shipping" class="dashtab hidden">
+        <h2 class="font-display font-bold text-xl mb-1">Status Pengiriman Real-time</h2>
+        <p class="text-sm text-zinc-500 mb-6">Lacak posisi terkini paket kamu.</p>
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5">
+          <div class="text-sm font-semibold mb-3">Levi's 501 Denim Jacket — JNE REG</div>
+          <ol class="space-y-3 text-sm">
+            <li class="flex gap-3"><span class="w-2 h-2 rounded-full bg-[var(--sage)] mt-1.5"></span> Paket dalam perjalanan ke kota tujuan</li>
+            <li class="flex gap-3"><span class="w-2 h-2 rounded-full bg-zinc-300 mt-1.5"></span> Tiba di gudang sortir</li>
+            <li class="flex gap-3"><span class="w-2 h-2 rounded-full bg-zinc-300 mt-1.5"></span> Dikemas oleh penjual</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PAGE: CHECKOUT ============ -->
+<section id="page-checkout" class="page">
+  <div id="checkoutContent" class="max-w-3xl mx-auto px-6 py-10"></div>
+</section>
+
+</main>
+
+<!-- ============ QUICK-VIEW MODAL ============ -->
+<div id="quickViewModal" class="hidden fixed inset-0 z-[60] bg-zinc-900/40 flex items-center justify-center px-6">
+  <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto relative">
+    <button onclick="closeQuickView()" class="absolute top-4 right-4 z-10 bg-white/90 rounded-full w-8 h-8 flex items-center justify-center text-zinc-500 hover:text-zinc-900 text-xl leading-none">&times;</button>
+    <div id="quickViewContent" class="grid grid-cols-1 md:grid-cols-2 gap-0"></div>
+  </div>
+</div>
+
+<!-- ============ ZOOM LIGHTBOX ============ -->
+<div id="zoomLightbox" class="hidden fixed inset-0 z-[70] bg-zinc-900/90 flex items-center justify-center px-6" onclick="closeZoom()">
+  <img id="zoomImage" src="" class="max-h-[90vh] max-w-full object-contain rounded-lg" alt="Detail foto">
+  <button onclick="closeZoom()" class="absolute top-5 right-5 text-white text-3xl leading-none">&times;</button>
+</div>
+
+<script>
+/* ============ PRODUCT DATA ============ */
+const mockProducts = [
+  {id:"1", title:"Vintage Nike Crewneck 90s", chest:56, length:71, grade:"A", score:9.5, price:185000, era:"1990s", material:"Cotton Fleece", sold:false, seed:"nike90"},
+  {id:"2", title:"Levi's 501 Denim Jacket", chest:52, length:65, grade:"B", score:8.0, price:245000, era:"1980s", material:"Rigid Denim", sold:false, seed:"levi501"},
+  {id:"3", title:"Champion Reverse Weave Hoodie", chest:58, length:69, grade:"A+", score:9.8, price:210000, era:"2000s", material:"Reverse Weave Cotton", sold:false, seed:"champhood"},
+  {id:"4", title:"Carhartt Detroit Jacket", chest:60, length:74, grade:"B", score:7.5, price:275000, era:"1990s", material:"Duck Canvas", sold:true, seed:"carhartt"},
+  {id:"5", title:"Ralph Lauren Polo Shirt", chest:50, length:68, grade:"A", score:9.0, price:135000, era:"1990s", material:"Pique Cotton", sold:false, seed:"ralph"},
+  {id:"6", title:"Harrington Bomber Jacket", chest:55, length:66, grade:"A", score:9.2, price:265000, era:"1970s", material:"Nylon Shell", sold:false, seed:"harrington"},
+  {id:"7", title:"Flannel Plaid Shirt L/S", chest:54, length:72, grade:"C", score:6.5, price:95000, era:"2000s", material:"Brushed Flannel", sold:false, seed:"flannel"},
+  {id:"8", title:"Adidas Track Jacket 3-Stripe", chest:53, length:67, grade:"A", score:8.8, price:165000, era:"1990s", material:"Tricot Polyester", sold:false, seed:"adidastrack"},
+  {id:"9", title:"Corduroy Overshirt Brown", chest:57, length:73, grade:"B", score:7.8, price:145000, era:"1980s", material:"Wide-Wale Corduroy", sold:false, seed:"corduroy"},
+];
+let products = mockProducts; // swapped for real API data by loadProducts() when API_BASE is connected
+
+function mapApiProduct(p){
+  return {
+    id: p.id,
+    title: p.title,
+    chest: p.chest_width_cm,
+    length: p.length_cm,
+    grade: p.condition_grade,
+    score: p.condition_score,
+    price: p.price,
+    era: p.era,
+    material: p.material,
+    sold: p.is_sold,
+    seed: p.id,
+    imageUrls: p.image_urls || null,
+  };
+}
+
+function productImageUrl(p, w, h, index){
+  if(p.imageUrls && p.imageUrls.length){
+    return p.imageUrls[index] || p.imageUrls[0];
+  }
+  // Prefer a locally-placed photo (see photos/README.md) — falls back
+  // via onerror to a placeholder if the file isn't there.
+  return `photos/${p.seed}${index || ""}.jpg`;
+}
+function productImageFallback(p, w, h, index){
+  const seedSuffix = index ? `${p.seed}${index}` : p.seed;
+  return `https://picsum.photos/seed/${seedSuffix}/${w}/${h}`;
+}
+function productImgTag(p, w, h, index, cls, alt){
+  const usingRealPhotos = !!(p.imageUrls && p.imageUrls.length);
+  const primary = productImageUrl(p, w, h, index);
+  const fallback = productImageFallback(p, w, h, index);
+
+  let onerror;
+  if(usingRealPhotos || !index){
+    // Real backend photo, or this IS the main local photo already — just
+    // fall back straight to the placeholder if it's missing.
+    onerror = `this.onerror=null;this.src='${fallback}'`;
+  } else {
+    // Thumbnail with no dedicated detail shot yet (e.g. photos/flannel1.jpg
+    // doesn't exist) — reuse the main product photo instead of showing an
+    // unrelated random placeholder. Only falls to the placeholder if even
+    // the main photo is missing.
+    const localMain = `photos/${p.seed}.jpg`;
+    onerror = `this.onerror=function(){this.onerror=null;this.src='${fallback}'};this.src='${localMain}'`;
+  }
+
+  return `<img src="${primary}" class="${cls}" loading="lazy" alt="${alt}" onerror="${onerror}">`;
+}
+
+async function loadProducts(){
+  if(API_BASE){
+    const result = await apiRequest("GET", "/api/products?includeSold=true");
+    if(result?.products){
+      products = result.products.map(mapApiProduct);
+      return;
+    }
+  }
+  products = mockProducts;
+}
+
+const gradeColor = {"A+":"bg-emerald-50 text-emerald-700 border-emerald-200","A":"bg-[var(--sage)]/10 text-[var(--sage)] border-[var(--sage)]/30","B":"bg-amber-50 text-amber-700 border-amber-200","C":"bg-zinc-100 text-zinc-600 border-zinc-200"};
+
+let state = {
+  targetFit: null,         // {chest, length}
+  katalogView: "grid",
+  gradeFilter: new Set(["A+","A","B","C"]),
+  currentProduct: null,
+  savedProfiles: [],       // in-memory only, no localStorage
+  addresses: [],           // in-memory unless API_BASE is connected (see saveAddress)
+  hold: null,              // {productId, endTime, intervalId}
+  user: null,              // {name, email, userId} — in-memory demo session unless connected
+};
+
+/* ============ BACKEND CONNECTION (optional) ============
+ * Leave these empty to keep everything in this demo's in-memory
+ * mock state (current default — no server or Supabase project required).
+ *
+ * To connect to the real thing:
+ *   1. SUPABASE_URL / SUPABASE_ANON_KEY — from your Supabase project
+ *      settings (Project Settings → API). This switches login over to
+ *      real Supabase Auth (signUp / signInWithPassword), so `userId`
+ *      becomes a real UUID from auth.users.
+ *   2. API_BASE — the deployed/running URL of the Next.js backend
+ *      project (thriftfit-backend), e.g. "http://localhost:3000".
+ *      This is what the address book, fit profiles, and checkout call.
+ *   3. MIDTRANS_CLIENT_KEY — the PUBLIC client key from your Midtrans
+ *      dashboard (safe to expose in frontend code, unlike the server
+ *      key, which stays server-side in the backend project's .env).
+ *      Set MIDTRANS_IS_PRODUCTION to true only once you have live
+ *      (not sandbox) Midtrans keys.
+ * Every API call below already falls back to local demo state if
+ * a request fails or these aren't configured, so this file keeps
+ * working standalone either way. Without MIDTRANS_CLIENT_KEY,
+ * "Bayar Sekarang" falls back to the demo-only /api/checkout/complete
+ * path (or fully local demo if API_BASE is also empty).
+ */
+const SUPABASE_URL = "https://mearpuirccpbdbswhitz.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_l1aU8FiTgMU2qJzlku-oAw_6O0zMCe-";
+const API_BASE = "";
+const MIDTRANS_CLIENT_KEY = "";
+const MIDTRANS_IS_PRODUCTION = false;
+
+const sbClient = (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+function loadSnapScript(){
+  return new Promise((resolve, reject) => {
+    if(window.snap) return resolve();
+    const script = document.createElement("script");
+    script.src = MIDTRANS_IS_PRODUCTION
+      ? "https://app.midtrans.com/snap/snap.js"
+      : "https://app.sandbox.midtrans.com/snap/snap.js";
+    script.setAttribute("data-client-key", MIDTRANS_CLIENT_KEY);
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Gagal memuat Midtrans Snap.js — cek koneksi atau client key."));
+    document.head.appendChild(script);
+  });
+}
+
+async function apiRequest(method, path, body){
+  const result = await apiRequestRaw(method, path, body);
+  return result?.ok ? result.data : null;
+}
+
+async function apiRequestRaw(method, path, body){
+  if(!API_BASE) return null;
+  try{
+    const headers = {"Content-Type": "application/json"};
+    if(sbClient){
+      const { data } = await sbClient.auth.getSession();
+      if(data.session?.access_token) headers["Authorization"] = `Bearer ${data.session.access_token}`;
+    }
+    const res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, data };
+  } catch(err){
+    console.warn("ThriftFit: backend call failed, using local demo state instead.", err);
+    return null;
+  }
+}
+
+/* ============ AUTH ============
+ * Uses real Supabase Auth when SUPABASE_URL/SUPABASE_ANON_KEY are set;
+ * otherwise falls back to an in-memory demo session (name + email only,
+ * no password, random client-side UUID).
+ */
+state.authMode = "signin"; // "signin" | "signup" — only shown when sbClient is connected
+
+function renderAuthUI(){
+  document.querySelectorAll(".authSlot").forEach(slot => {
+    slot.innerHTML = state.user
+      ? `<span class="text-zinc-700">Hai, ${state.user.name.split(" ")[0]} · <button onclick="logout()" class="font-semibold hover:text-zinc-900">Keluar</button></span>`
+      : `<button onclick="openLoginModal()" class="font-medium text-zinc-700 hover:text-zinc-900">Masuk</button>`;
+  });
+}
+
+function updateAuthModalMode(){
+  const connected = !!sbClient;
+  document.getElementById("loginPassword").classList.toggle("hidden", !connected);
+  document.getElementById("authToggleModeText").classList.toggle("hidden", !connected);
+  document.getElementById("loginError").classList.add("hidden");
+  const hint = document.getElementById("loginModeHint");
+  if(connected){
+    hint.textContent = state.authMode === "signup"
+      ? "Buat akun baru — email & password tersimpan sungguhan lewat Supabase Auth."
+      : "Masuk dengan akun Supabase Auth kamu.";
+  } else {
+    hint.textContent = "Demo login untuk prototipe — sesi ini tidak tersimpan permanen. Isi SUPABASE_URL & SUPABASE_ANON_KEY di kode untuk pakai akun sungguhan.";
+  }
+  document.getElementById("loginSubmit").textContent = connected && state.authMode === "signup" ? "Daftar" : "Masuk";
+  document.getElementById("authToggleModeText").innerHTML = state.authMode === "signup"
+    ? `Sudah punya akun? <button onclick="toggleAuthMode()" class="font-semibold underline">Masuk</button>`
+    : `Belum punya akun? <button onclick="toggleAuthMode()" class="font-semibold underline">Daftar</button>`;
+}
+function toggleAuthMode(){
+  state.authMode = state.authMode === "signin" ? "signup" : "signin";
+  updateAuthModalMode();
+}
+function openLoginModal(){
+  updateAuthModalMode();
+  document.getElementById("loginModal").classList.remove("hidden");
+  closeMobileMenu();
+}
+function closeLoginModal(){
+  document.getElementById("loginModal").classList.add("hidden");
+}
+async function logout(){
+  if(sbClient) await sbClient.auth.signOut();
+  state.user = null;
+  state.addresses = [];
+  renderAuthUI();
+  if(document.getElementById("page-dashboard").classList.contains("active")){
+    document.getElementById("dashboardLoginBanner").classList.remove("hidden");
+  }
+}
+
+document.getElementById("loginSubmit").addEventListener("click", async () => {
+  const name = document.getElementById("loginName").value.trim();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errorEl = document.getElementById("loginError");
+  errorEl.classList.add("hidden");
+
+  if(!email || (sbClient && !password) || (!sbClient && !name)){
+    errorEl.textContent = "Lengkapi form dulu ya.";
+    errorEl.classList.remove("hidden");
+    return;
+  }
+
+  if(sbClient){
+    try{
+      const result = state.authMode === "signup"
+        ? await sbClient.auth.signUp({ email, password, options: { data: { full_name: name || email.split("@")[0] } } })
+        : await sbClient.auth.signInWithPassword({ email, password });
+      if(result.error) throw result.error;
+      if(!result.data.user){
+        errorEl.textContent = "Cek email kamu untuk konfirmasi akun, lalu masuk lagi.";
+        errorEl.classList.remove("hidden");
+        return;
+      }
+      state.user = {
+        name: result.data.user.user_metadata?.full_name || name || email.split("@")[0],
+        email: result.data.user.email,
+        userId: result.data.user.id,
+      };
+    } catch(err){
+      errorEl.textContent = err.message || "Gagal masuk. Coba lagi.";
+      errorEl.classList.remove("hidden");
+      return;
+    }
+  } else {
+    state.user = { name, email, userId: crypto.randomUUID() };
+  }
+
+  document.getElementById("loginName").value = "";
+  document.getElementById("loginEmail").value = "";
+  document.getElementById("loginPassword").value = "";
+  closeLoginModal();
+  renderAuthUI();
+  const banner = document.getElementById("dashboardLoginBanner");
+  if(banner) banner.classList.add("hidden");
+  await loadAddresses();
+  await loadProfiles();
+});
+
+// Restore an existing Supabase session on page load (real backend only —
+// demo mode has no session to restore, so this is a no-op then).
+(async () => {
+  if(!sbClient) return;
+  const { data } = await sbClient.auth.getSession();
+  if(data.session?.user){
+    state.user = {
+      name: data.session.user.user_metadata?.full_name || data.session.user.email.split("@")[0],
+      email: data.session.user.email,
+      userId: data.session.user.id,
+    };
+    renderAuthUI();
+    await loadAddresses();
+    await loadProfiles();
+  }
+})();
+
+/* ============ MOBILE MENU ============ */
+function closeMobileMenu(){
+  document.getElementById("mobileMenu").classList.add("hidden");
+}
+document.getElementById("mobileMenuBtn").addEventListener("click", () => {
+  document.getElementById("mobileMenu").classList.toggle("hidden");
+});
+
+/* ============ FIT ALGORITHM ============ */
+function fitScore(pChest, pLength, tChest, tLength){
+  const dChest = Math.abs(pChest - tChest);
+  const dLength = Math.abs(pLength - tLength);
+  return Math.max(0, 100 - (dChest * 4.0) - (dLength * 2.5));
+}
+function fitLabel(score){
+  if(score > 85) return {label:"PERFECT FIT", cls:"bg-[var(--sage)]/10 text-[var(--sage)] border-[var(--sage)]/30"};
+  if(score >= 70) return {label:"SLIGHTLY OVERSIZED / RELAXED", cls:"bg-amber-50 text-amber-700 border-amber-200"};
+  return {label:"KURANG SESUAI", cls:"bg-red-50 text-red-600 border-red-200"};
+}
+
+/* ============ NAVIGATION ============ */
+function goTo(pageId, scrollId){
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.getElementById("page-" + pageId).classList.add("active");
+  document.querySelectorAll(".nav-link").forEach(l => l.classList.remove("active"));
+  document.querySelectorAll(`.nav-link[data-nav="${pageId}"]`).forEach(l => l.classList.add("active"));
+  window.scrollTo({top:0, behavior:"instant"});
+  closeMobileMenu();
+  if(pageId === "katalog") renderKatalog();
+  if(pageId === "dashboard"){
+    renderProfiles();
+    document.getElementById("dashboardLoginBanner").classList.toggle("hidden", !!state.user);
+  }
+  if(scrollId){
+    setTimeout(() => {
+      const el = document.getElementById(scrollId);
+      if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
+    }, 50);
+  }
+}
+document.querySelectorAll(".nav-btn").forEach(btn => {
+  btn.addEventListener("click", e => {
+    e.preventDefault();
+    goTo(btn.dataset.nav, btn.dataset.scroll);
+  });
+});
+
+/* ============ PRODUCT CARD RENDERER ============ */
+function productCard(p, opts={}){
+  const large = opts.large ? "aspect-[4/5]" : "aspect-[3/4]";
+  const clickHandler = opts.quickView ? `openQuickView('${p.id}')` : `openPDP('${p.id}')`;
+  let fitBadge = "";
+  if(state.targetFit && !p.sold){
+    const sc = fitScore(p.chest, p.length, state.targetFit.chest, state.targetFit.length);
+    const fl = fitLabel(sc);
+    fitBadge = `<span class="absolute top-2 left-2 text-[10px] font-bold font-mono px-2 py-1 rounded-full border ${fl.cls} bg-white/95">${Math.round(sc)}% ${fl.label}</span>`;
+  }
+  const cornerBadge = p.sold
+    ? `<span class="absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-full bg-zinc-500 text-white uppercase tracking-wide">TERJUAL</span>`
+    : `<span class="absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-full bg-zinc-900 text-white uppercase tracking-wide">1-OF-1</span>`;
+  return `
+  <div class="card-hover bg-white border border-zinc-200 rounded-2xl overflow-hidden cursor-pointer" onclick="${clickHandler}">
+    <div class="relative ${large} bg-zinc-100">
+      ${productImgTag(p, 500, 650, null, `w-full h-full object-cover ${p.sold ? "grayscale opacity-70" : ""}`, p.title)}
+      ${p.sold ? `<div class="absolute inset-0 flex items-center justify-center"><span class="bg-white/95 text-zinc-900 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-zinc-300">Sudah Terjual</span></div>` : ""}
+      ${fitBadge}
+      ${cornerBadge}
+    </div>
+    <div class="p-3">
+      <div class="text-sm font-semibold text-zinc-900 truncate">${p.title}</div>
+      <div class="flex items-center justify-between mt-1.5">
+        <span class="text-xs font-mono text-zinc-500">L:${p.chest} P:${p.length}</span>
+        <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${gradeColor[p.grade]}">GRADE ${p.grade} (${p.score}/10)</span>
+      </div>
+      <div class="font-display font-bold text-zinc-900 mt-2">Rp ${p.price.toLocaleString("id-ID")}</div>
+    </div>
+  </div>`;
+}
+
+function renderHomeGrid(){
+  document.getElementById("homeGrid").innerHTML = products.slice(0,4).map(p => productCard(p)).join("");
+}
+
+/* ============ QUICK-FIT (HOME) ============ */
+document.getElementById("qfSubmit").addEventListener("click", () => {
+  const chest = parseFloat(document.getElementById("qfChest").value);
+  const length = parseFloat(document.getElementById("qfLength").value);
+  if(!chest || !length){
+    document.getElementById("qfHint").textContent = "Isi lebar dada dan panjang baju dulu ya.";
+    document.getElementById("qfHint").classList.add("text-red-500");
+    return;
+  }
+  state.targetFit = {chest, length};
+  goTo("katalog");
+});
+
+/* ============ KATALOG ============ */
+function renderGradeFilters(){
+  const grades = ["A+","A","B","C"];
+  document.getElementById("gradeFilters").innerHTML = grades.map(g => `
+    <button data-grade="${g}" class="gradeBtn text-xs font-semibold px-3 py-1.5 rounded-full border ${state.gradeFilter.has(g) ? gradeColor[g] : "bg-white text-zinc-400 border-zinc-200"}">${g}</button>
+  `).join("");
+  document.querySelectorAll(".gradeBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const g = btn.dataset.grade;
+      if(state.gradeFilter.has(g)) state.gradeFilter.delete(g); else state.gradeFilter.add(g);
+      renderGradeFilters();
+      renderKatalog();
+    });
+  });
+}
+
+function renderKatalog(){
+  const chestMin = parseFloat(document.getElementById("fChestMin").value) || -Infinity;
+  const chestMax = parseFloat(document.getElementById("fChestMax").value) || Infinity;
+  const lengthMin = parseFloat(document.getElementById("fLengthMin").value) || -Infinity;
+  const lengthMax = parseFloat(document.getElementById("fLengthMax").value) || Infinity;
+
+  let filtered = products.filter(p =>
+    p.chest >= chestMin && p.chest <= chestMax &&
+    p.length >= lengthMin && p.length <= lengthMax &&
+    state.gradeFilter.has(p.grade)
+  );
+
+  if(state.targetFit){
+    filtered = filtered.map(p => ({...p, _score: p.sold ? -1 : fitScore(p.chest, p.length, state.targetFit.chest, state.targetFit.length)}));
+    filtered.sort((a,b) => b._score - a._score);
+    document.getElementById("fitBannerText").innerHTML = `Diurutkan berdasarkan kecocokan untuk target <span class="font-mono font-semibold text-zinc-700">L:${state.targetFit.chest}cm P:${state.targetFit.length}cm</span>`;
+  } else {
+    filtered = [...filtered].sort((a,b) => (a.sold === b.sold) ? 0 : (a.sold ? 1 : -1));
+    document.getElementById("fitBannerText").textContent = "Tips: isi ukuran di halaman utama untuk melihat skor kecocokan.";
+  }
+
+  const grid = document.getElementById("katalogGrid");
+  const empty = document.getElementById("emptyState");
+  if(filtered.length === 0){
+    grid.innerHTML = "";
+    empty.classList.remove("hidden");
+  } else {
+    empty.classList.add("hidden");
+    grid.className = state.katalogView === "grid" ? "grid grid-cols-2 md:grid-cols-3 gap-5" : "grid grid-cols-1 sm:grid-cols-2 gap-5";
+    grid.innerHTML = filtered.map(p => productCard(p, {large: state.katalogView === "large", quickView: true})).join("");
+  }
+}
+["fChestMin","fChestMax","fLengthMin","fLengthMax"].forEach(id => {
+  document.getElementById(id).addEventListener("input", renderKatalog);
+});
+document.getElementById("clearFilters").addEventListener("click", () => {
+  ["fChestMin","fChestMax","fLengthMin","fLengthMax"].forEach(id => document.getElementById(id).value = "");
+  state.gradeFilter = new Set(["A+","A","B","C"]);
+  state.targetFit = null;
+  renderGradeFilters();
+  renderKatalog();
+});
+document.querySelectorAll(".viewBtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".viewBtn").forEach(b => b.classList.remove("tab-active"));
+    btn.classList.add("tab-active");
+    state.katalogView = btn.dataset.view;
+    renderKatalog();
+  });
+});
+
+/* ============ QUICK-VIEW MODAL (Katalog) ============ */
+function openQuickView(id){
+  const p = products.find(pr => pr.id === id);
+  let fitBlock = "";
+  if(state.targetFit && !p.sold){
+    const sc = fitScore(p.chest, p.length, state.targetFit.chest, state.targetFit.length);
+    const fl = fitLabel(sc);
+    fitBlock = `<div class="mt-3 text-xs font-mono px-3 py-2 rounded-lg border ${fl.cls} inline-block">${Math.round(sc)}% ${fl.label}</div>`;
+  }
+  document.getElementById("quickViewContent").innerHTML = `
+    <div class="relative aspect-[4/5] bg-zinc-100">
+      ${productImgTag(p, 500, 650, null, `w-full h-full object-cover ${p.sold ? "grayscale opacity-70" : ""}`, p.title)}
+      ${p.sold ? `<div class="absolute inset-0 flex items-center justify-center"><span class="bg-white/95 text-zinc-900 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-zinc-300">Sudah Terjual</span></div>` : ""}
+    </div>
+    <div class="p-6">
+      <span class="text-xs font-semibold px-2 py-1 rounded-full ${p.sold ? "bg-zinc-500" : "bg-zinc-900"} text-white uppercase tracking-wide">${p.sold ? "TERJUAL" : "1-OF-1 ONLY"}</span>
+      <h3 class="font-display font-bold text-xl mt-3 mb-1">${p.title}</h3>
+      <div class="font-display font-bold text-lg mb-3">Rp ${p.price.toLocaleString("id-ID")}</div>
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-xs font-semibold px-2 py-1 rounded-full border ${gradeColor[p.grade]}">GRADE ${p.grade} (${p.score}/10)</span>
+        <span class="text-xs font-mono text-zinc-500">L:${p.chest}cm P:${p.length}cm</span>
+      </div>
+      ${fitBlock}
+      <p class="text-sm text-zinc-500 mt-4 mb-5">${p.material} · Era ${p.era}</p>
+      <div class="flex gap-2">
+        <button onclick="closeQuickView(); openPDP('${p.id}')" class="flex-1 border border-zinc-300 hover:border-zinc-900 text-zinc-800 font-semibold text-sm py-2.5 rounded-full transition">Lihat Detail Lengkap</button>
+        ${p.sold ? "" : `<button onclick="closeQuickView(); startCheckout('${p.id}')" class="flex-1 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-sm py-2.5 rounded-full transition">Amankan Item</button>`}
+      </div>
+    </div>
+  `;
+  document.getElementById("quickViewModal").classList.remove("hidden");
+}
+function closeQuickView(){
+  document.getElementById("quickViewModal").classList.add("hidden");
+}
+
+/* ============ ZOOM LIGHTBOX (PDP photos) ============ */
+function openZoom(src){
+  document.getElementById("zoomImage").src = src;
+  document.getElementById("zoomLightbox").classList.remove("hidden");
+}
+function closeZoom(){
+  document.getElementById("zoomLightbox").classList.add("hidden");
+}
+
+/* ============ PDP ============ */
+function openPDP(id){
+  state.currentProduct = products.find(p => p.id === id);
+  renderPDP();
+  goTo("pdp");
+}
+
+function renderPDP(){
+  const p = state.currentProduct;
+  const prefillChest = state.targetFit ? state.targetFit.chest : "";
+  const prefillLength = state.targetFit ? state.targetFit.length : "";
+  document.getElementById("pdpContent").innerHTML = `
+    <button onclick="goTo('katalog')" class="text-sm text-zinc-500 hover:text-zinc-900 mb-6">&larr; Kembali ke Katalog</button>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+      <div>
+        <div class="relative aspect-[4/5] rounded-2xl overflow-hidden bg-zinc-100 mb-3 cursor-zoom-in" onclick="openZoom(this.querySelector('img').src)">
+          ${productImgTag(p, 700, 875, null, `w-full h-full object-cover ${p.sold ? "grayscale opacity-70" : ""}`, p.title)}
+          ${p.sold ? `<div class="absolute inset-0 flex items-center justify-center"><span class="bg-white/95 text-zinc-900 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border border-zinc-300">Sudah Terjual</span></div>` : `<span class="absolute bottom-3 right-3 bg-white/90 text-xs font-semibold px-3 py-1.5 rounded-full text-zinc-700">🔍 Klik untuk zoom</span>`}
+        </div>
+        <div class="grid grid-cols-4 gap-3">
+          ${[1,2,3,4].map(i => `<div class="aspect-square rounded-lg overflow-hidden bg-zinc-100 cursor-zoom-in" onclick="openZoom(this.querySelector('img').src)">${productImgTag(p, 200, 200, i, "w-full h-full object-cover", "detail cacat/kondisi")}</div>`).join("")}
+        </div>
+      </div>
+      <div>
+        <span class="text-xs font-semibold px-2 py-1 rounded-full ${p.sold ? "bg-zinc-500" : "bg-zinc-900"} text-white uppercase tracking-wide">${p.sold ? "SUDAH TERJUAL" : "1-OF-1 ONLY"}</span>
+        <h1 class="font-display font-extrabold text-2xl md:text-3xl mt-3 mb-2">${p.title}</h1>
+        <div class="font-display font-bold text-xl mb-4">Rp ${p.price.toLocaleString("id-ID")}</div>
+
+        <div class="flex items-center gap-3 mb-6">
+          <span class="text-xs font-semibold px-3 py-1.5 rounded-full border ${gradeColor[p.grade]}">GRADE ${p.grade}</span>
+          <div class="flex-1">
+            <div class="h-2 bg-zinc-100 rounded-full overflow-hidden">
+              <div class="meter-fill h-full bg-[var(--sage)]" style="width:${p.score*10}%"></div>
+            </div>
+          </div>
+          <span class="text-xs font-mono text-zinc-500">${p.score}/10</span>
+        </div>
+
+        <div class="flex gap-6 mb-6 font-mono text-sm text-zinc-600">
+          <div><span class="text-zinc-400">Lebar Dada:</span> ${p.chest} cm</div>
+          <div><span class="text-zinc-400">Panjang:</span> ${p.length} cm</div>
+        </div>
+
+        <!-- Fit Calculator -->
+        <div class="bg-white border border-zinc-200 rounded-2xl p-5 mb-6">
+          <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Cek Kesesuaian Ukuranku</div>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Target Lebar Dada</label>
+              <input id="pdpChest" type="number" value="${prefillChest}" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm font-mono">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-zinc-700 mb-1">Target Panjang</label>
+              <input id="pdpLength" type="number" value="${prefillLength}" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm font-mono">
+            </div>
+          </div>
+          <button id="pdpCalcBtn" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-2.5 rounded-lg text-sm mb-3">Hitung Fit-Match Score</button>
+          <div id="pdpResult"></div>
+        </div>
+
+        <!-- Accordion -->
+        <div class="border border-zinc-200 rounded-2xl divide-y divide-zinc-100 mb-6">
+          <div>
+            <button class="accBtn w-full text-left px-4 py-3 text-sm font-semibold flex justify-between items-center">Detail Bahan & Era <span>+</span></button>
+            <div class="accordion-body px-4 text-sm text-zinc-600 leading-relaxed">
+              <p class="pb-4">Material: ${p.material}. Era: ${p.era}. Setiap item dibersihkan dan diperiksa jahitan sebelum dikirim.</p>
+            </div>
+          </div>
+          <div>
+            <button class="accBtn w-full text-left px-4 py-3 text-sm font-semibold flex justify-between items-center">Catatan Kondisi Fisik <span>+</span></button>
+            <div class="accordion-body px-4 text-sm text-zinc-600 leading-relaxed">
+              <p class="pb-4">Skor kondisi ${p.score}/10. Klik foto detail di galeri untuk melihat bekas pakai atau cacat spesifik pada area jahitan dan kain secara close-up.</p>
+            </div>
+          </div>
+        </div>
+
+        ${p.sold
+          ? `<button disabled class="w-full bg-zinc-200 text-zinc-400 font-semibold py-3.5 rounded-full text-sm cursor-not-allowed">Item Ini Sudah Terjual</button>`
+          : `<button onclick="startCheckout('${p.id}')" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-3.5 rounded-full text-sm transition">Amankan Item Ini &rarr;</button>`
+        }
+      </div>
+    </div>
+  `;
+
+  document.getElementById("pdpCalcBtn").addEventListener("click", () => {
+    const tChest = parseFloat(document.getElementById("pdpChest").value);
+    const tLength = parseFloat(document.getElementById("pdpLength").value);
+    const box = document.getElementById("pdpResult");
+    if(!tChest || !tLength){
+      box.innerHTML = `<p class="text-xs text-red-500">Isi target lebar dada & panjang dulu ya.</p>`;
+      return;
+    }
+    const sc = fitScore(p.chest, p.length, tChest, tLength);
+    const fl = fitLabel(sc);
+    box.innerHTML = `
+      <div class="flex items-center justify-between p-3 rounded-lg border ${fl.cls}">
+        <span class="text-sm font-bold">${fl.label}</span>
+        <span class="font-mono font-bold text-lg">${Math.round(sc)}%</span>
+      </div>`;
+  });
+
+  document.querySelectorAll(".accBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const body = btn.nextElementSibling;
+      const wasOpen = body.classList.contains("open");
+      body.classList.toggle("open", !wasOpen);
+      btn.querySelector("span").textContent = !wasOpen ? "–" : "+";
+    });
+  });
+}
+
+/* ============ DASHBOARD: FIT PROFILE SAVER ============ */
+async function loadProfiles(){
+  if(API_BASE && state.user?.userId){
+    const result = await apiRequest("GET", "/api/fit-profiles");
+    if(result?.profiles){
+      state.savedProfiles = result.profiles.map(p => ({
+        id: p.id, name: p.profile_name, chest: p.target_chest_cm, length: p.target_length_cm, pref: p.fit_preference,
+      }));
+    }
+  }
+  renderProfiles();
+}
+
+document.getElementById("dpSave").addEventListener("click", async () => {
+  const name = document.getElementById("dpName").value.trim();
+  const chest = parseFloat(document.getElementById("dpChest").value);
+  const length = parseFloat(document.getElementById("dpLength").value);
+  const pref = document.getElementById("dpPref").value;
+  if(!name || !chest || !length) return;
+
+  let saved = null;
+  if(API_BASE && state.user?.userId){
+    const result = await apiRequest("POST", "/api/fit-profiles", {
+      profileName: name, targetChestCm: chest, targetLengthCm: length, fitPreference: pref,
+    });
+    if(result?.profile){
+      saved = { id: result.profile.id, name, chest, length, pref };
+    }
+  }
+  if(!saved){
+    saved = { id: crypto.randomUUID(), name, chest, length, pref };
+  }
+  state.savedProfiles.push(saved);
+
+  document.getElementById("dpName").value = "";
+  document.getElementById("dpChest").value = "";
+  document.getElementById("dpLength").value = "";
+  renderProfiles();
+});
+
+function renderProfiles(){
+  const list = document.getElementById("dpList");
+  if(state.savedProfiles.length === 0){
+    list.innerHTML = `<p class="text-sm text-zinc-400">Belum ada profil tersimpan.${API_BASE ? "" : " (Mode demo — data hanya bertahan selama sesi ini.)"}</p>`;
+    return;
+  }
+  list.innerHTML = state.savedProfiles.map((prof) => `
+    <div class="bg-white border border-zinc-200 rounded-xl p-4 flex items-center justify-between">
+      <div>
+        <div class="text-sm font-semibold">${prof.name}</div>
+        <div class="text-xs font-mono text-zinc-500">L:${prof.chest}cm P:${prof.length}cm · ${prof.pref}</div>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="useProfile('${prof.id}')" class="text-xs font-semibold text-zinc-700 hover:text-zinc-900 border border-zinc-200 rounded-full px-3 py-1.5">Gunakan</button>
+        <button onclick="deleteProfile('${prof.id}')" class="text-xs font-semibold text-red-500 hover:text-red-700">Hapus</button>
+      </div>
+    </div>
+  `).join("");
+}
+function useProfile(id){
+  const prof = state.savedProfiles.find(p => p.id === id);
+  state.targetFit = {chest: prof.chest, length: prof.length};
+  goTo("katalog");
+}
+async function deleteProfile(id){
+  if(API_BASE && state.user?.userId){
+    await apiRequest("DELETE", `/api/fit-profiles/${id}`);
+  }
+  state.savedProfiles = state.savedProfiles.filter(p => p.id !== id);
+  renderProfiles();
+}
+
+/* ============ ADDRESS BOOK (Dashboard + Checkout autofill) ============ */
+async function loadAddresses(){
+  if(API_BASE && state.user?.userId){
+    const result = await apiRequest("GET", `/api/addresses`);
+    if(result?.addresses){
+      state.addresses = result.addresses.map(a => ({
+        id: a.id, label: a.label, name: a.recipient_name, phone: a.phone, address: a.full_address, isDefault: a.is_default,
+      }));
+    }
+  }
+  renderAddressBook();
+}
+
+function renderAddressBook(){
+  const list = document.getElementById("addrList");
+  if(!list) return;
+  if(state.addresses.length === 0){
+    list.innerHTML = `<p class="text-sm text-zinc-400">Belum ada alamat tersimpan.${API_BASE ? "" : " (Mode demo — data hanya bertahan selama sesi ini karena backend belum disambungkan.)"}</p>`;
+    return;
+  }
+  list.innerHTML = state.addresses.map((a) => `
+    <div class="bg-white border border-zinc-200 rounded-xl p-4 flex items-center justify-between">
+      <div>
+        <div class="text-sm font-semibold flex items-center gap-2">${a.label} ${a.isDefault ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--sage)]/10 text-[var(--sage)] border border-[var(--sage)]/30">UTAMA</span>` : ""}</div>
+        <div class="text-xs text-zinc-500 mt-0.5">${a.name} · ${a.phone}</div>
+        <div class="text-xs text-zinc-400 mt-0.5">${a.address}</div>
+      </div>
+      <div class="flex gap-2 shrink-0 ml-3">
+        ${a.isDefault ? "" : `<button onclick="setDefaultAddress('${a.id}')" class="text-xs font-semibold text-zinc-700 hover:text-zinc-900 border border-zinc-200 rounded-full px-3 py-1.5">Jadikan Utama</button>`}
+        <button onclick="deleteAddress('${a.id}')" class="text-xs font-semibold text-red-500 hover:text-red-700">Hapus</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+document.getElementById("addrSave").addEventListener("click", async () => {
+  const label = document.getElementById("addrLabel").value.trim() || "Rumah";
+  const name = document.getElementById("addrName").value.trim();
+  const phone = document.getElementById("addrPhone").value.trim();
+  const address = document.getElementById("addrFull").value.trim();
+  const isDefault = document.getElementById("addrDefault").checked;
+  if(!name || !phone || !address) return;
+
+  let saved = null;
+  if(API_BASE && state.user?.userId){
+    const result = await apiRequest("POST", "/api/addresses", {
+      label, recipientName: name, phone, fullAddress: address, isDefault,
+    });
+    if(result?.address){
+      saved = { id: result.address.id, label, name, phone, address, isDefault };
+    }
+  }
+  if(!saved){
+    // Offline/demo fallback — in-memory only.
+    if(isDefault) state.addresses.forEach(a => a.isDefault = false);
+    saved = { id: crypto.randomUUID(), label, name, phone, address, isDefault };
+  }
+  state.addresses.push(saved);
+
+  document.getElementById("addrLabel").value = "";
+  document.getElementById("addrName").value = "";
+  document.getElementById("addrPhone").value = "";
+  document.getElementById("addrFull").value = "";
+  document.getElementById("addrDefault").checked = false;
+  renderAddressBook();
+});
+
+async function setDefaultAddress(id){
+  if(API_BASE && state.user?.userId){
+    await apiRequest("PATCH", `/api/addresses/${id}`, { isDefault: true });
+  }
+  state.addresses.forEach(a => a.isDefault = (a.id === id));
+  renderAddressBook();
+}
+
+async function deleteAddress(id){
+  if(API_BASE && state.user?.userId){
+    await apiRequest("DELETE", `/api/addresses/${id}`);
+  }
+  state.addresses = state.addresses.filter(a => a.id !== id);
+  renderAddressBook();
+}
+
+document.querySelectorAll(".dashTabBtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".dashTabBtn").forEach(b => { b.classList.remove("tab-active"); b.classList.add("text-zinc-600"); });
+    btn.classList.add("tab-active"); btn.classList.remove("text-zinc-600");
+    document.querySelectorAll(".dashtab").forEach(t => t.classList.add("hidden"));
+    document.getElementById("dashtab-" + btn.dataset.dashtab).classList.remove("hidden");
+    if(btn.dataset.dashtab === "addresses") renderAddressBook();
+  });
+});
+
+/* ============ CHECKOUT (15-MIN HOLD TIMER) ============ */
+async function startCheckout(productId){
+  if(state.hold && state.hold.intervalId) clearInterval(state.hold.intervalId);
+  let endTime = Date.now() + 15*60*1000;
+
+  if(API_BASE && state.user?.userId){
+    const result = await apiRequestRaw("POST", "/api/checkout/hold", { productId });
+    if(result && !result.ok){
+      alert(result.data?.error || "Gagal melakukan hold. Coba lagi.");
+      return;
+    }
+    if(result?.data?.holdUntil){
+      endTime = new Date(result.data.holdUntil).getTime();
+    }
+  }
+
+  state.hold = {productId, endTime, intervalId: null};
+  renderCheckout();
+  goTo("checkout");
+  tickHold();
+  state.hold.intervalId = setInterval(tickHold, 1000);
+}
+
+function tickHold(){
+  if(!state.hold) return;
+  const remaining = state.hold.endTime - Date.now();
+  const timerEl = document.getElementById("holdTimer");
+  const indicator = document.getElementById("holdIndicator");
+  if(remaining <= 0){
+    if(timerEl) timerEl.textContent = "00:00 — Waktu habis";
+    indicator.textContent = "Hold berakhir";
+    clearInterval(state.hold.intervalId);
+    document.getElementById("checkoutExpiredNotice")?.classList.remove("hidden");
+    document.getElementById("payBtn")?.setAttribute("disabled", "true");
+    return;
+  }
+  const mm = String(Math.floor(remaining/60000)).padStart(2,"0");
+  const ss = String(Math.floor((remaining%60000)/1000)).padStart(2,"0");
+  if(timerEl) timerEl.textContent = `${mm}:${ss}`;
+  indicator.classList.remove("hidden");
+  indicator.textContent = `Item dihold ${mm}:${ss}`;
+}
+
+const SHIPPING_COSTS = {"JNE REG": 15000, "JNE YES (1 Hari)": 35000, "Instant (GoSend/Grab)": 25000};
+
+function renderCheckout(){
+  const p = products.find(pr => pr.id === state.hold.productId);
+  const shippingCosts = SHIPPING_COSTS;
+  const defaultCourier = "JNE REG";
+  document.getElementById("checkoutContent").innerHTML = `
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="font-display font-bold text-2xl">Checkout</h1>
+      <div class="text-right">
+        <div class="text-xs text-zinc-400">Item dihold selama</div>
+        <div id="holdTimer" class="font-mono font-bold text-lg text-amber-700">15:00</div>
+      </div>
+    </div>
+    <p id="checkoutExpiredNotice" class="hidden bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl p-3 mb-4">Waktu hold sudah habis. Item ini bisa diambil pembeli lain. Silakan ulangi checkout dari halaman produk.</p>
+
+    <div class="bg-white border border-zinc-200 rounded-2xl p-5 mb-6">
+      <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Ringkasan Pesanan</div>
+      <div class="flex gap-4 items-center">
+        ${productImgTag(p, 120, 150, null, "w-16 h-20 object-cover rounded-lg", p.title)}
+        <div class="flex-1">
+          <div class="text-sm font-semibold">${p.title}</div>
+          <div class="text-xs font-mono text-zinc-500">L:${p.chest}cm P:${p.length}cm · Grade ${p.grade}</div>
+        </div>
+        <div class="font-display font-bold">Rp ${p.price.toLocaleString("id-ID")}</div>
+      </div>
+      ${state.targetFit ? `<div class="mt-3 text-xs font-mono px-3 py-2 rounded-lg ${fitLabel(fitScore(p.chest,p.length,state.targetFit.chest,state.targetFit.length)).cls} border">PxL Check vs targetmu: ${Math.round(fitScore(p.chest,p.length,state.targetFit.chest,state.targetFit.length))}% match</div>` : ""}
+    </div>
+
+    <div class="bg-white border border-zinc-200 rounded-2xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-bold uppercase tracking-wider text-zinc-400">Pengiriman</div>
+        <button onclick="autofillShipping()" class="text-xs font-semibold text-zinc-700 hover:text-zinc-900 underline">Gunakan alamat tersimpan</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+        <input id="shipName" type="text" placeholder="Nama Penerima" value="${state.user ? state.user.name : ""}" class="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+        <input id="shipPhone" type="text" placeholder="No. HP" class="bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+        <input id="shipAddress" type="text" placeholder="Alamat Lengkap" class="md:col-span-2 bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+      </div>
+      <label class="block text-xs font-semibold text-zinc-700 mb-1">Kurir</label>
+      <select id="shipCourier" class="w-full bg-zinc-50 border border-zinc-200 rounded-lg px-3 py-2 text-sm">
+        ${Object.keys(shippingCosts).map(c => `<option value="${c}" ${c===defaultCourier?"selected":""}>${c} — Rp ${shippingCosts[c].toLocaleString("id-ID")}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="bg-white border border-zinc-200 rounded-2xl p-5 mb-6">
+      <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Rincian Biaya</div>
+      <div class="flex justify-between text-sm text-zinc-600 mb-1.5">
+        <span>Harga Item</span><span class="font-mono">Rp ${p.price.toLocaleString("id-ID")}</span>
+      </div>
+      <div class="flex justify-between text-sm text-zinc-600 mb-3">
+        <span>Ongkos Kirim</span><span id="shipCostDisplay" class="font-mono">Rp ${shippingCosts[defaultCourier].toLocaleString("id-ID")}</span>
+      </div>
+      <div class="flex justify-between text-base font-bold pt-3 border-t border-zinc-100">
+        <span>Total</span><span id="checkoutTotal" class="font-mono">Rp ${(p.price + shippingCosts[defaultCourier]).toLocaleString("id-ID")}</span>
+      </div>
+    </div>
+
+    <div class="bg-white border border-zinc-200 rounded-2xl p-5 mb-6">
+      <div class="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Metode Pembayaran</div>
+      <div class="grid grid-cols-3 gap-3">
+        ${["QRIS","E-Wallet","Virtual Account"].map((m,i) => `
+          <label class="payOption flex items-center gap-2 border border-zinc-200 rounded-lg px-3 py-2.5 text-sm cursor-pointer">
+            <input type="radio" name="pay" value="${m}" ${i===0?"checked":""}> ${m}
+          </label>
+        `).join("")}
+      </div>
+    </div>
+
+    <button id="payBtn" onclick="completePayment()" class="w-full bg-zinc-900 hover:bg-zinc-800 text-white font-semibold py-3.5 rounded-full text-sm transition">Bayar Sekarang</button>
+    <div id="paySuccess" class="hidden mt-4 text-sm rounded-xl p-4 text-center font-semibold"></div>
+  `;
+
+  document.getElementById("shipCourier").addEventListener("change", (e) => {
+    const cost = SHIPPING_COSTS[e.target.value];
+    document.getElementById("shipCostDisplay").textContent = `Rp ${cost.toLocaleString("id-ID")}`;
+    document.getElementById("checkoutTotal").textContent = `Rp ${(p.price + cost).toLocaleString("id-ID")}`;
+  });
+}
+
+function autofillShipping(){
+  const defaultAddr = state.addresses.find(a => a.isDefault) || state.addresses[0];
+  if(defaultAddr){
+    document.getElementById("shipName").value = defaultAddr.name;
+    document.getElementById("shipPhone").value = defaultAddr.phone;
+    document.getElementById("shipAddress").value = defaultAddr.address;
+    return;
+  }
+  // No saved address yet — demo-only placeholder, prompts the person to save one for next time.
+  document.getElementById("shipName").value = state.user ? state.user.name : "Pengunjung ThriftFit";
+  document.getElementById("shipPhone").value = "0812-3456-7890";
+  document.getElementById("shipAddress").value = "Jl. Malioboro No. 10, Yogyakarta, DIY 55213";
+}
+
+function showPaymentStatus(type, message){
+  const el = document.getElementById("paySuccess");
+  el.textContent = message;
+  el.className = "mt-4 text-sm rounded-xl p-4 text-center font-semibold border " + (
+    type === "success" ? "bg-[var(--sage)]/10 border-[var(--sage)]/30 text-[var(--sage)]" :
+    type === "pending" ? "bg-amber-50 border-amber-200 text-amber-700" :
+    "bg-red-50 border-red-200 text-red-600"
+  );
+}
+
+async function completePayment(){
+  const p = products.find(pr => pr.id === state.hold.productId);
+  const paymentMethod = document.querySelector('input[name="pay"]:checked')?.value || null;
+  const courier = document.getElementById("shipCourier").value;
+  const shipName = document.getElementById("shipName").value;
+  const shipPhone = document.getElementById("shipPhone").value;
+  const shipAddress = document.getElementById("shipAddress").value;
+  const matchScore = state.targetFit ? fitScore(p.chest, p.length, state.targetFit.chest, state.targetFit.length) : null;
+
+  const useMidtrans = !!(API_BASE && state.user?.userId && MIDTRANS_CLIENT_KEY);
+
+  if(useMidtrans){
+    const result = await apiRequestRaw("POST", "/api/checkout/create-transaction", {
+      productId: p.id, courier, matchScore,
+      shippingName: shipName, shippingPhone: shipPhone, shippingAddress: shipAddress,
+    });
+    if(!result || !result.ok){
+      alert(result?.data?.error || "Gagal membuat transaksi pembayaran. Coba lagi.");
+      return;
+    }
+
+    try{
+      await loadSnapScript();
+    } catch(err){
+      alert(err.message);
+      return;
+    }
+
+    const payBtn = document.getElementById("payBtn");
+    payBtn.setAttribute("disabled", "true");
+    payBtn.classList.add("opacity-40");
+
+    window.snap.pay(result.data.snapToken, {
+      onSuccess: () => {
+        // Optimistic UI only — the webhook (/api/webhooks/midtrans) is the
+        // real source of truth that flips is_sold in the database.
+        p.sold = true;
+        if(state.hold.intervalId) clearInterval(state.hold.intervalId);
+        document.getElementById("holdIndicator").classList.add("hidden");
+        showPaymentStatus("success", "Pembayaran diterima — item ini resmi jadi milikmu.");
+      },
+      onPending: () => {
+        showPaymentStatus("pending", "Pembayaran sedang diproses (misalnya menunggu transfer VA). Konfirmasi otomatis begitu Midtrans menerima pembayarannya.");
+      },
+      onError: () => {
+        payBtn.removeAttribute("disabled");
+        payBtn.classList.remove("opacity-40");
+        showPaymentStatus("error", "Pembayaran gagal. Coba lagi ya.");
+      },
+      onClose: () => {
+        payBtn.removeAttribute("disabled");
+        payBtn.classList.remove("opacity-40");
+      },
+    });
+    return;
+  }
+
+  // Fallback: demo-only direct-complete path (no Midtrans client key configured).
+  if(API_BASE && state.user?.userId){
+    const result = await apiRequestRaw("POST", "/api/checkout/complete", {
+      productId: p.id, paymentMethod, matchScore,
+      shippingName: shipName, shippingPhone: shipPhone, shippingAddress: shipAddress,
+    });
+    if(result && !result.ok){
+      alert(result.data?.error || "Gagal menyelesaikan pembayaran. Coba ulangi checkout.");
+      return;
+    }
+  }
+
+  p.sold = true;
+  if(state.hold.intervalId) clearInterval(state.hold.intervalId);
+  document.getElementById("payBtn").setAttribute("disabled","true");
+  document.getElementById("payBtn").classList.add("opacity-40");
+  document.getElementById("holdIndicator").classList.add("hidden");
+  showPaymentStatus("success", API_BASE
+    ? "Pembayaran diterima — item ini resmi jadi milikmu."
+    : "Pembayaran diterima — item ini resmi jadi milikmu. (Mode demo, belum lewat gateway sungguhan.)");
+}
+
+/* ============ INIT ============ */
+(async () => {
+  await loadProducts();
+  renderHomeGrid();
+  renderGradeFilters();
+  renderAuthUI();
+})();
+</script>
+</body>
+</html>
