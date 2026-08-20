@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(rawBody, signature || "", webhookSecret);
+    event = stripe().webhooks.constructEvent(rawBody, signature || "", webhookSecret);
   } catch (err: any) {
     return NextResponse.json({ error: `Invalid signature: ${err.message}` }, { status: 400 });
   }
