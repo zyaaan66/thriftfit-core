@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
-import { stripe } from "@/lib/stripe";
-
+import { getStripe } from "@/lib/stripe";
 /**
  * POST /api/webhooks/stripe
  * Configure this URL in Stripe Dashboard → Developers → Webhooks,
@@ -22,7 +21,7 @@ export async function POST(req: NextRequest) {
 
   let event;
   try {
-    event = stripe().webhooks.constructEvent(rawBody, signature || "", webhookSecret);
+    event = getStripe().webhooks.constructEvent(rawBody, signature || "", webhookSecret);
   } catch (err: any) {
     return NextResponse.json({ error: `Invalid signature: ${err.message}` }, { status: 400 });
   }
