@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer, getUserFromRequest } from "@/lib/supabase/server";
-import { createSnapTransaction } from "@/lib/midtrans";
+import { createCheckoutSession } from "@/lib/stripe";
 import { SHIPPING_COSTS, DEFAULT_COURIER } from "@/lib/shipping";
 
 /**
  * POST /api/checkout/create-transaction
  * Requires: Authorization: Bearer <supabase access token>
- * Body: { productId, courier, matchScore, shippingName, shippingPhone, shippingAddress }
+ * Body: { productId, courier, matchScore, shippingName, shippingPhone,
+ *         shippingAddress, returnUrl }
  *
- * This is the real entry point for paying — it creates a `pending`
- * order and a Midtrans Snap transaction, and returns a token for
- * `snap.pay(token, ...)` on the frontend. It does NOT mark the item
- * sold. Only the verified webhook in /api/webhooks/midtrans does
- * that, once Midtrans confirms the payment actually happened — the
- * client can't finalize its own purchase just by saying so.
+ * `returnUrl` is the frontend's own page URL (e.g. where the prototype
+ * HTML is hosted) — Stripe redirects back there with a query string
+ * appended, since this backend has no pages of its own to redirect to.
+ *
+ * Creates a `pending` order and a Stripe Checkout Session, and
+ * returns the hosted checkout URL to redirect the browser to. It
+ * does NOT mark the item sold. Only the verified webhook in
+ * /api/webhooks/stripe does that, once Stripe confirms payment.
  */
 export async function POST(req: NextRequest) {
   const user = await getUserFromRequest(req);
@@ -26,6 +29,7 @@ export async function POST(req: NextRequest) {
     shippingName,
     shippingPhone,
     shippingAddress,
+    returnUrl,
   } = await req.json();
 
   if (!productId || !shippingName || !shippingPhone || !shippingAddress) {
@@ -60,8 +64,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // gross_amount is computed server-side from the product's real price
-  // and a fixed shipping cost table — never trust an amount from the client.
   const grossAmount = Number(product.price) + shippingCost;
 
   const { data: order, error: orderError } = await supabaseServer
@@ -84,24 +86,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: orderError?.message || "Failed to create order" }, { status: 500 });
   }
 
+  // Base to redirect back to after payment: the frontend's own URL if it
+  // sent one, otherwise fall back to this API's own origin.
+  const base = (returnUrl && String(returnUrl)) || req.nextUrl.origin;
+  const separator = base.includes("?") ? "&" : "?";
+
   try {
-    const snap = await createSnapTransaction({
+    const checkout = await createCheckoutSession({
       orderId: order.id,
       grossAmount,
-      customerName: shippingName,
+      productTitle: product.title,
       customerEmail: user.email,
-      customerPhone: shippingPhone,
+      successUrl: `${base}${separator}payment=success&order_id=${order.id}`,
+      cancelUrl: `${base}${separator}payment=cancel&order_id=${order.id}`,
     });
 
     return NextResponse.json({
       orderId: order.id,
-      snapToken: snap.token,
-      redirectUrl: snap.redirect_url,
+      checkoutUrl: checkout.url,
       grossAmount,
     });
   } catch (err: any) {
-    // Roll back the pending order if Midtrans couldn't be reached/configured,
-    // so it doesn't sit there forever with no way to pay it.
     await supabaseServer.from("orders").delete().eq("id", order.id);
     return NextResponse.json(
       { error: err.message || "Gagal membuat transaksi pembayaran." },
