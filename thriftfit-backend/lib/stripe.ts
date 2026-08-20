@@ -1,14 +1,25 @@
 import Stripe from "stripe";
 
-const secretKey = process.env.STRIPE_SECRET_KEY;
-if (!secretKey) {
-  // Throwing at import time would break `next build` type-checking on
-  // machines without the env var set locally; check lazily instead.
-}
+let _stripe: Stripe | null = null;
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2026-07-29.dahlia",
-});
+/**
+ * Lazily creates the Stripe client on first use instead of at module
+ * import time. Next.js statically analyzes API routes during
+ * `next build` ("Collecting page data"), which imports this file —
+ * if `new Stripe(...)` ran at the top level, a missing/empty
+ * STRIPE_SECRET_KEY at that point would crash the build itself,
+ * even though the real value is present at runtime.
+ */
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) throw new Error("STRIPE_SECRET_KEY is not configured");
+    _stripe = new Stripe(key, {
+      apiVersion: "2026-07-29.dahlia",
+    });
+  }
+  return _stripe;
+}
 
 /**
  * Creates a Stripe Checkout Session and returns the hosted payment
@@ -23,9 +34,7 @@ export async function createCheckoutSession(params: {
   successUrl: string;
   cancelUrl: string;
 }): Promise<{ url: string; sessionId: string }> {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error("STRIPE_SECRET_KEY is not configured");
-  }
+  const stripe = getStripe();
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -53,3 +62,10 @@ export async function createCheckoutSession(params: {
 
   return { url: session.url, sessionId: session.id };
 }
+
+/**
+ * Exposes the lazily-created Stripe client for other modules that
+ * need it directly (e.g. the webhook route, for signature
+ * verification via getStripe().webhooks.constructEvent).
+ */
+export { getStripe };
